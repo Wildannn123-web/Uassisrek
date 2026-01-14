@@ -14,7 +14,28 @@ def load_data():
 
 df = load_data()
 
-st.title("🎵 Sistem Rekomendasi Lagu Berbasis Collaborative Filtering")
+# =====================
+# STYLE
+# =====================
+st.markdown("""
+<style>
+.big-title {
+    font-size: 40px;
+    font-weight: bold;
+    text-align: center;
+}
+.subtitle {
+    text-align: center;
+    color: gray;
+    font-size: 18px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<p class="big-title">🎵 Sistem Rekomendasi Lagu</p>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">Collaborative Filtering (Artist-Based)</p>', unsafe_allow_html=True)
+
+st.divider()
 
 # =====================
 # PRE-PROCESSING
@@ -42,7 +63,7 @@ artist_similarity_df = pd.DataFrame(
 )
 
 # =====================
-# FUNCTION REKOMENDASI
+# FUNCTION REKOMENDASI (TIDAK DIUBAH)
 # =====================
 def recommend_songs_by_artist(artist_name, top_n=5):
     if artist_name not in artist_similarity_df.index:
@@ -55,30 +76,61 @@ def recommend_songs_by_artist(artist_name, top_n=5):
     return mean_scores.head(top_n)
 
 # =====================
-# UI STREAMLIT
+# UI INPUT
 # =====================
-artist_selected = st.selectbox(
-    "Pilih Nama Artis:",
-    artist_song_matrix.index
-)
+col1, col2 = st.columns(2)
 
-top_n = st.slider("Jumlah Rekomendasi", 1, 10, 5)
+with col1:
+    artist_selected = st.selectbox(
+        "🎤 Pilih Nama Artis:",
+        artist_song_matrix.index
+    )
 
-if st.button("Tampilkan Rekomendasi"):
+with col2:
+    top_n = st.slider(
+        "🎯 Jumlah Rekomendasi",
+        1, 10, 5
+    )
+
+st.divider()
+
+# =====================
+# OUTPUT
+# =====================
+if st.button("✨ Tampilkan Rekomendasi"):
     recommendations = recommend_songs_by_artist(artist_selected, top_n)
 
     if recommendations is not None:
         st.subheader("🎧 Lagu Rekomendasi")
-        st.dataframe(recommendations)
+
+        # =====================
+        # PERBAIKAN TABEL (HILANGKAN KOLOM 0)
+        # =====================
+        recommendations_df = recommendations.reset_index()
+        recommendations_df.columns = ["Judul Lagu", "Skor Rekomendasi"]
+
+        st.dataframe(
+            recommendations_df.style
+            .background_gradient(cmap="Blues")
+            .format({"Skor Rekomendasi": "{:.2f}"})
+        )
+
+        st.divider()
 
         # =====================
         # VISUALISASI
         # =====================
-        fig, ax = plt.subplots()
-        recommendations.plot(kind='barh', ax=ax)
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.barh(
+            recommendations_df["Judul Lagu"],
+            recommendations_df["Skor Rekomendasi"]
+        )
         ax.set_xlabel("Skor Prediksi")
         ax.set_ylabel("Judul Lagu")
-        ax.set_title("Hasil Rekomendasi Lagu")
+        ax.set_title("📊 Visualisasi Rekomendasi Lagu")
+        ax.invert_yaxis()
+
         st.pyplot(fig)
+
     else:
-        st.warning("Artis tidak ditemukan dalam dataset.")
+        st.warning("⚠️ Artis tidak ditemukan dalam dataset.")
