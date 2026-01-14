@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 # PAGE CONFIG
 # =====================
 st.set_page_config(
-    page_title="Sistem Rekomendasi Lagu",
+    page_title="Song-Based Recommender",
     layout="wide"
 )
 
@@ -50,7 +50,7 @@ st.markdown("""
 
 st.markdown('<p class="big-title">🎵 Sistem Rekomendasi Lagu</p>', unsafe_allow_html=True)
 st.markdown(
-    '<p class="subtitle">Artist-Based Collaborative Filtering dengan Cosine Similarity</p>',
+    '<p class="subtitle">Song-Based Collaborative Filtering dengan Cosine Similarity</p>',
     unsafe_allow_html=True
 )
 
@@ -68,64 +68,49 @@ scaler = MinMaxScaler(feature_range=(1, 5))
 df['rating'] = scaler.fit_transform(df[['popularity']])
 
 # =====================
-# USER SIMULASI
+# SIMULASI USER
 # =====================
 np.random.seed(42)
 users = ['User1', 'User2', 'User3', 'User4', 'User5']
 df['user'] = np.random.choice(users, size=len(df))
 
 # =====================
-# PIVOT TABLE
+# SONG-ARTIST MATRIX
 # =====================
-artist_song_matrix = df.pivot_table(
-    index='artist',
-    columns='song',
+song_artist_matrix = df.pivot_table(
+    index='song',
+    columns='artist',
     values='rating'
 )
 
 # =====================
 # COSINE SIMILARITY
 # =====================
-artist_similarity = cosine_similarity(
-    artist_song_matrix.fillna(0)
+song_similarity = cosine_similarity(
+    song_artist_matrix.fillna(0)
 )
 
-artist_similarity_df = pd.DataFrame(
-    artist_similarity,
-    index=artist_song_matrix.index,
-    columns=artist_song_matrix.index
+song_similarity_df = pd.DataFrame(
+    song_similarity,
+    index=song_artist_matrix.index,
+    columns=song_artist_matrix.index
 )
 
 # =====================
 # FUNCTION REKOMENDASI
 # =====================
-def recommend_songs_by_artist(artist_name, top_n=10):
-    if artist_name not in artist_song_matrix.index:
+def recommend_similar_songs(song_name, top_n=10):
+    if song_name not in song_similarity_df.index:
         return None
 
-    similar_artists = (
-        artist_similarity_df[artist_name]
+    similar_songs = (
+        song_similarity_df[song_name]
         .sort_values(ascending=False)
-        .drop(artist_name)
+        .drop(song_name)
+        .head(top_n)
     )
 
-    recommended_songs = {}
-
-    for similar_artist in similar_artists.index[:5]:
-        songs = artist_song_matrix.loc[similar_artist].dropna()
-
-        for song, rating in songs.items():
-            if pd.isna(artist_song_matrix.loc[artist_name].get(song)):
-                if song not in recommended_songs:
-                    recommended_songs[song] = rating
-
-    recommendations = sorted(
-        recommended_songs.items(),
-        key=lambda x: x[1],
-        reverse=True
-    )
-
-    return recommendations[:top_n]
+    return similar_songs
 
 # =====================
 # UI INPUT
@@ -133,9 +118,9 @@ def recommend_songs_by_artist(artist_name, top_n=10):
 col1, col2 = st.columns(2)
 
 with col1:
-    artist_selected = st.selectbox(
-        "🎤 Pilih Artis",
-        artist_song_matrix.index
+    song_selected = st.selectbox(
+        "🎶 Pilih Lagu",
+        song_artist_matrix.index
     )
 
 with col2:
@@ -148,53 +133,46 @@ with col2:
 # OUTPUT
 # =====================
 if st.button("✨ Tampilkan Rekomendasi"):
-    st.markdown('<p class="section">🎧 Lagu Rekomendasi</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section">🎧 Lagu yang Mirip</p>', unsafe_allow_html=True)
 
-    recommendations = recommend_songs_by_artist(artist_selected, top_n)
+    recommendations = recommend_similar_songs(song_selected, top_n)
 
     if recommendations is not None:
-        rec_df = pd.DataFrame(
-            recommendations,
-            columns=["Judul Lagu", "Rating Prediksi"]
-        )
+        rec_df = recommendations.reset_index()
+        rec_df.columns = ["Judul Lagu", "Skor Kemiripan"]
 
         st.dataframe(
             rec_df.style
-            .background_gradient(cmap="Blues")
-            .format({"Rating Prediksi": "{:.2f}"})
+            .background_gradient(cmap="Greens")
+            .format({"Skor Kemiripan": "{:.2f}"})
         )
 
         # =====================
-        # VISUALISASI ARTIS MIRIP
+        # BAR CHART SIMILARITY
         # =====================
-        st.markdown('<p class="section">📊 Artis yang Paling Mirip</p>', unsafe_allow_html=True)
-
-        similar_artists = (
-            artist_similarity_df[artist_selected]
-            .sort_values(ascending=False)[1:6]
-        )
+        st.markdown('<p class="section">📊 Visualisasi Kemiripan Lagu</p>', unsafe_allow_html=True)
 
         fig1, ax1 = plt.subplots(figsize=(8, 4))
-        ax1.bar(similar_artists.index, similar_artists.values)
-        ax1.set_ylabel("Similarity Score")
-        ax1.set_title(f"Top 5 Artis Mirip dengan {artist_selected}")
-        ax1.set_xticklabels(similar_artists.index, rotation=45)
+        ax1.bar(rec_df["Judul Lagu"], rec_df["Skor Kemiripan"])
+        ax1.set_ylabel("Cosine Similarity")
+        ax1.set_title(f"Lagu yang Mirip dengan '{song_selected}'")
+        ax1.set_xticklabels(rec_df["Judul Lagu"], rotation=45)
 
         st.pyplot(fig1)
 
         # =====================
-        # HEATMAP SIMILARITY
+        # HEATMAP SONG SIMILARITY
         # =====================
-        st.markdown('<p class="section">🔥 Heatmap Similarity Antar Artis</p>', unsafe_allow_html=True)
+        st.markdown('<p class="section">🔥 Heatmap Similarity Lagu</p>', unsafe_allow_html=True)
 
         fig2, ax2 = plt.subplots(figsize=(8, 6))
-        im = ax2.imshow(artist_similarity_df.iloc[:10, :10])
+        im = ax2.imshow(song_similarity_df.iloc[:10, :10])
         plt.colorbar(im)
         ax2.set_xticks(range(10))
         ax2.set_yticks(range(10))
-        ax2.set_xticklabels(artist_similarity_df.columns[:10], rotation=90)
-        ax2.set_yticklabels(artist_similarity_df.index[:10])
-        ax2.set_title("Heatmap Similarity Antar Artis (Top 10)")
+        ax2.set_xticklabels(song_similarity_df.columns[:10], rotation=90)
+        ax2.set_yticklabels(song_similarity_df.index[:10])
+        ax2.set_title("Heatmap Similarity Lagu (Top 10)")
         st.pyplot(fig2)
 
         # =====================
@@ -217,4 +195,4 @@ if st.button("✨ Tampilkan Rekomendasi"):
         st.pyplot(fig3)
 
     else:
-        st.warning("⚠️ Artis tidak ditemukan.")
+        st.warning("⚠️ Lagu tidak ditemukan.")
