@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
@@ -54,40 +53,51 @@ features = [
 df = df[['song', 'artist'] + features]
 df.dropna(inplace=True)
 
+# 🔴 PENTING: pastikan lagu unik (hindari error)
+df = df.drop_duplicates(subset='song').reset_index(drop=True)
+
 # Normalisasi fitur
 scaler = MinMaxScaler()
 df[features] = scaler.fit_transform(df[features])
 
 # =====================
-# SIMILARITY
+# COSINE SIMILARITY
 # =====================
-content_similarity = cosine_similarity(df[features])
+similarity_matrix = cosine_similarity(df[features])
 
-content_similarity_df = pd.DataFrame(
-    content_similarity,
+similarity_df = pd.DataFrame(
+    similarity_matrix,
     index=df['song'],
     columns=df['song']
 )
 
 # =====================
-# FUNCTION REKOMENDASI
+# FUNCTION REKOMENDASI (AMAN)
 # =====================
 def recommend_content_based(song_name, top_n=5):
-    if song_name not in content_similarity_df.index:
+    if song_name not in similarity_df.index:
         return None
 
-    similar_songs = (
-        content_similarity_df[song_name]
-        .sort_values(ascending=False)[1:top_n+1]
+    scores = similarity_df.loc[song_name]
+
+    # pastikan Series
+    if isinstance(scores, pd.DataFrame):
+        scores = scores.iloc[0]
+
+    recommendations = (
+        scores
+        .sort_values(ascending=False)
+        .iloc[1:top_n+1]
     )
-    return similar_songs
+
+    return recommendations
 
 # =====================
 # UI INPUT
 # =====================
 song_selected = st.selectbox(
     "🎶 Pilih Lagu:",
-    df['song'].unique()
+    df['song'].values
 )
 
 top_n = st.slider(
@@ -104,24 +114,24 @@ if st.button("✨ Tampilkan Rekomendasi"):
     recommendations = recommend_content_based(song_selected, top_n)
 
     if recommendations is not None:
-        st.subheader("🎧 Lagu yang Mirip Berdasarkan Konten")
+        st.subheader("🎧 Lagu yang Direkomendasikan")
 
-        recommendations_df = recommendations.reset_index()
-        recommendations_df.columns = ["Judul Lagu", "Skor Kemiripan"]
+        result_df = recommendations.reset_index()
+        result_df.columns = ["Judul Lagu", "Skor Kemiripan"]
 
         st.dataframe(
-            recommendations_df.style
+            result_df.style
             .background_gradient(cmap="Purples")
             .format({"Skor Kemiripan": "{:.2f}"})
         )
 
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.barh(
-            recommendations_df["Judul Lagu"],
-            recommendations_df["Skor Kemiripan"]
+            result_df["Judul Lagu"],
+            result_df["Skor Kemiripan"]
         )
         ax.set_xlabel("Cosine Similarity")
-        ax.set_title("📊 Visualisasi Kemiripan Lagu (Content-Based)")
+        ax.set_title("📊 Visualisasi Rekomendasi Lagu (Content-Based)")
         ax.invert_yaxis()
 
         st.pyplot(fig)
