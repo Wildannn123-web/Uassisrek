@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 
 # =====================
@@ -33,7 +34,7 @@ st.markdown("""
 
 st.markdown('<p class="big-title">🎵 Sistem Rekomendasi Lagu</p>', unsafe_allow_html=True)
 st.markdown(
-    '<p class="subtitle">Song-Based Collaborative Filtering dengan Cosine Similarity</p>',
+    '<p class="subtitle">Content-Based Filtering dengan Cosine Similarity</p>',
     unsafe_allow_html=True
 )
 
@@ -42,36 +43,43 @@ st.divider()
 # =====================
 # PRE-PROCESSING
 # =====================
-df = df[['artist', 'song', 'popularity']]
+features = [
+    'danceability',
+    'energy',
+    'valence',
+    'tempo',
+    'acousticness'
+]
+
+df = df[['song', 'artist'] + features]
 df.dropna(inplace=True)
 
-song_artist_matrix = df.pivot_table(
-    index='song',
-    columns='artist',
-    values='popularity'
-)
+# Normalisasi fitur
+scaler = MinMaxScaler()
+df[features] = scaler.fit_transform(df[features])
 
 # =====================
 # SIMILARITY
 # =====================
-song_similarity = cosine_similarity(
-    song_artist_matrix.fillna(0)
-)
+content_similarity = cosine_similarity(df[features])
 
-song_similarity_df = pd.DataFrame(
-    song_similarity,
-    index=song_artist_matrix.index,
-    columns=song_artist_matrix.index
+content_similarity_df = pd.DataFrame(
+    content_similarity,
+    index=df['song'],
+    columns=df['song']
 )
 
 # =====================
 # FUNCTION REKOMENDASI
 # =====================
-def recommend_similar_songs(song_name, top_n=5):
-    if song_name not in song_similarity_df.index:
+def recommend_content_based(song_name, top_n=5):
+    if song_name not in content_similarity_df.index:
         return None
 
-    similar_songs = song_similarity_df[song_name].sort_values(ascending=False)[1:top_n+1]
+    similar_songs = (
+        content_similarity_df[song_name]
+        .sort_values(ascending=False)[1:top_n+1]
+    )
     return similar_songs
 
 # =====================
@@ -79,10 +87,13 @@ def recommend_similar_songs(song_name, top_n=5):
 # =====================
 song_selected = st.selectbox(
     "🎶 Pilih Lagu:",
-    song_artist_matrix.index
+    df['song'].unique()
 )
 
-top_n = st.slider("🎯 Jumlah Rekomendasi", 1, 10, 5)
+top_n = st.slider(
+    "🎯 Jumlah Rekomendasi",
+    1, 10, 5
+)
 
 st.divider()
 
@@ -90,17 +101,17 @@ st.divider()
 # OUTPUT
 # =====================
 if st.button("✨ Tampilkan Rekomendasi"):
-    recommendations = recommend_similar_songs(song_selected, top_n)
+    recommendations = recommend_content_based(song_selected, top_n)
 
     if recommendations is not None:
-        st.subheader("🎧 Lagu yang Mirip")
+        st.subheader("🎧 Lagu yang Mirip Berdasarkan Konten")
 
         recommendations_df = recommendations.reset_index()
         recommendations_df.columns = ["Judul Lagu", "Skor Kemiripan"]
 
         st.dataframe(
             recommendations_df.style
-            .background_gradient(cmap="Greens")
+            .background_gradient(cmap="Purples")
             .format({"Skor Kemiripan": "{:.2f}"})
         )
 
@@ -110,7 +121,10 @@ if st.button("✨ Tampilkan Rekomendasi"):
             recommendations_df["Skor Kemiripan"]
         )
         ax.set_xlabel("Cosine Similarity")
-        ax.set_title("📊 Visualisasi Kemiripan Lagu")
+        ax.set_title("📊 Visualisasi Kemiripan Lagu (Content-Based)")
         ax.invert_yaxis()
 
         st.pyplot(fig)
+
+    else:
+        st.warning("⚠️ Lagu tidak ditemukan.")
