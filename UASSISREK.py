@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 # =====================
 @st.cache_data
 def load_data():
-    return pd.read_csv("songs_normalize.csv")
+    df = pd.read_csv("songs_normalize.csv")
+    return df
 
 df = load_data()
 
@@ -32,10 +33,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<p class="big-title">🎵 Sistem Rekomendasi Lagu</p>', unsafe_allow_html=True)
-st.markdown(
-    '<p class="subtitle">Song-Based Collaborative Filtering dengan Cosine Similarity</p>',
-    unsafe_allow_html=True
-)
+st.markdown('<p class="subtitle">Collaborative Filtering (Artist-Based)</p>', unsafe_allow_html=True)
 
 st.divider()
 
@@ -45,44 +43,54 @@ st.divider()
 df = df[['artist', 'song', 'popularity']]
 df.dropna(inplace=True)
 
-song_artist_matrix = df.pivot_table(
-    index='song',
-    columns='artist',
+artist_song_matrix = df.pivot_table(
+    index='artist',
+    columns='song',
     values='popularity'
 )
 
 # =====================
 # SIMILARITY
 # =====================
-song_similarity = cosine_similarity(
-    song_artist_matrix.fillna(0)
+artist_similarity = cosine_similarity(
+    artist_song_matrix.fillna(0)
 )
 
-song_similarity_df = pd.DataFrame(
-    song_similarity,
-    index=song_artist_matrix.index,
-    columns=song_artist_matrix.index
+artist_similarity_df = pd.DataFrame(
+    artist_similarity,
+    index=artist_song_matrix.index,
+    columns=artist_song_matrix.index
 )
 
 # =====================
-# FUNCTION REKOMENDASI
+# FUNCTION REKOMENDASI (TIDAK DIUBAH)
 # =====================
-def recommend_similar_songs(song_name, top_n=5):
-    if song_name not in song_similarity_df.index:
+def recommend_songs_by_artist(artist_name, top_n=5):
+    if artist_name not in artist_similarity_df.index:
         return None
 
-    similar_songs = song_similarity_df[song_name].sort_values(ascending=False)[1:top_n+1]
-    return similar_songs
+    similar_artists = artist_similarity_df[artist_name].sort_values(ascending=False)[1:6]
+    similar_songs = artist_song_matrix.loc[similar_artists.index]
+    mean_scores = similar_songs.mean().sort_values(ascending=False)
+
+    return mean_scores.head(top_n)
 
 # =====================
 # UI INPUT
 # =====================
-song_selected = st.selectbox(
-    "🎶 Pilih Lagu:",
-    song_artist_matrix.index
-)
+col1, col2 = st.columns(2)
 
-top_n = st.slider("🎯 Jumlah Rekomendasi", 1, 10, 5)
+with col1:
+    artist_selected = st.selectbox(
+        "🎤 Pilih Nama Artis:",
+        artist_song_matrix.index
+    )
+
+with col2:
+    top_n = st.slider(
+        "🎯 Jumlah Rekomendasi",
+        1, 10, 5
+    )
 
 st.divider()
 
@@ -90,27 +98,39 @@ st.divider()
 # OUTPUT
 # =====================
 if st.button("✨ Tampilkan Rekomendasi"):
-    recommendations = recommend_similar_songs(song_selected, top_n)
+    recommendations = recommend_songs_by_artist(artist_selected, top_n)
 
     if recommendations is not None:
-        st.subheader("🎧 Lagu yang Mirip")
+        st.subheader("🎧 Lagu Rekomendasi")
 
+        # =====================
+        # PERBAIKAN TABEL (HILANGKAN KOLOM 0)
+        # =====================
         recommendations_df = recommendations.reset_index()
-        recommendations_df.columns = ["Judul Lagu", "Skor Kemiripan"]
+        recommendations_df.columns = ["Judul Lagu", "Skor Rekomendasi"]
 
         st.dataframe(
             recommendations_df.style
-            .background_gradient(cmap="Greens")
-            .format({"Skor Kemiripan": "{:.2f}"})
+            .background_gradient(cmap="Blues")
+            .format({"Skor Rekomendasi": "{:.2f}"})
         )
 
+        st.divider()
+
+        # =====================
+        # VISUALISASI
+        # =====================
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.barh(
             recommendations_df["Judul Lagu"],
-            recommendations_df["Skor Kemiripan"]
+            recommendations_df["Skor Rekomendasi"]
         )
-        ax.set_xlabel("Cosine Similarity")
-        ax.set_title("📊 Visualisasi Kemiripan Lagu")
+        ax.set_xlabel("Skor Prediksi")
+        ax.set_ylabel("Judul Lagu")
+        ax.set_title("📊 Visualisasi Rekomendasi Lagu")
         ax.invert_yaxis()
 
         st.pyplot(fig)
+
+    else:
+        st.warning("⚠️ Artis tidak ditemukan dalam dataset.")
