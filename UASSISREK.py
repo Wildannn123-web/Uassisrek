@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 
 # =====================
@@ -33,7 +33,7 @@ st.markdown("""
 
 st.markdown('<p class="big-title">🎵 Sistem Rekomendasi Lagu</p>', unsafe_allow_html=True)
 st.markdown(
-    '<p class="subtitle">Content-Based Filtering dengan Cosine Similarity</p>',
+    '<p class="subtitle">Song-Based Collaborative Filtering dengan Cosine Similarity</p>',
     unsafe_allow_html=True
 )
 
@@ -42,68 +42,47 @@ st.divider()
 # =====================
 # PRE-PROCESSING
 # =====================
-features = [
-    'danceability',
-    'energy',
-    'valence',
-    'tempo',
-    'acousticness'
-]
-
-df = df[['song', 'artist'] + features]
+df = df[['artist', 'song', 'popularity']]
 df.dropna(inplace=True)
 
-# 🔴 PENTING: pastikan lagu unik (hindari error)
-df = df.drop_duplicates(subset='song').reset_index(drop=True)
-
-# Normalisasi fitur
-scaler = MinMaxScaler()
-df[features] = scaler.fit_transform(df[features])
-
-# =====================
-# COSINE SIMILARITY
-# =====================
-similarity_matrix = cosine_similarity(df[features])
-
-similarity_df = pd.DataFrame(
-    similarity_matrix,
-    index=df['song'],
-    columns=df['song']
+song_artist_matrix = df.pivot_table(
+    index='song',
+    columns='artist',
+    values='popularity'
 )
 
 # =====================
-# FUNCTION REKOMENDASI (AMAN)
+# SIMILARITY
 # =====================
-def recommend_content_based(song_name, top_n=5):
-    if song_name not in similarity_df.index:
+song_similarity = cosine_similarity(
+    song_artist_matrix.fillna(0)
+)
+
+song_similarity_df = pd.DataFrame(
+    song_similarity,
+    index=song_artist_matrix.index,
+    columns=song_artist_matrix.index
+)
+
+# =====================
+# FUNCTION REKOMENDASI
+# =====================
+def recommend_similar_songs(song_name, top_n=5):
+    if song_name not in song_similarity_df.index:
         return None
 
-    scores = similarity_df.loc[song_name]
-
-    # pastikan Series
-    if isinstance(scores, pd.DataFrame):
-        scores = scores.iloc[0]
-
-    recommendations = (
-        scores
-        .sort_values(ascending=False)
-        .iloc[1:top_n+1]
-    )
-
-    return recommendations
+    similar_songs = song_similarity_df[song_name].sort_values(ascending=False)[1:top_n+1]
+    return similar_songs
 
 # =====================
 # UI INPUT
 # =====================
 song_selected = st.selectbox(
     "🎶 Pilih Lagu:",
-    df['song'].values
+    song_artist_matrix.index
 )
 
-top_n = st.slider(
-    "🎯 Jumlah Rekomendasi",
-    1, 10, 5
-)
+top_n = st.slider("🎯 Jumlah Rekomendasi", 1, 10, 5)
 
 st.divider()
 
@@ -111,30 +90,27 @@ st.divider()
 # OUTPUT
 # =====================
 if st.button("✨ Tampilkan Rekomendasi"):
-    recommendations = recommend_content_based(song_selected, top_n)
+    recommendations = recommend_similar_songs(song_selected, top_n)
 
     if recommendations is not None:
-        st.subheader("🎧 Lagu yang Direkomendasikan")
+        st.subheader("🎧 Lagu yang Mirip")
 
-        result_df = recommendations.reset_index()
-        result_df.columns = ["Judul Lagu", "Skor Kemiripan"]
+        recommendations_df = recommendations.reset_index()
+        recommendations_df.columns = ["Judul Lagu", "Skor Kemiripan"]
 
         st.dataframe(
-            result_df.style
-            .background_gradient(cmap="Purples")
+            recommendations_df.style
+            .background_gradient(cmap="Greens")
             .format({"Skor Kemiripan": "{:.2f}"})
         )
 
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.barh(
-            result_df["Judul Lagu"],
-            result_df["Skor Kemiripan"]
+            recommendations_df["Judul Lagu"],
+            recommendations_df["Skor Kemiripan"]
         )
         ax.set_xlabel("Cosine Similarity")
-        ax.set_title("📊 Visualisasi Rekomendasi Lagu (Content-Based)")
+        ax.set_title("📊 Visualisasi Kemiripan Lagu")
         ax.invert_yaxis()
 
         st.pyplot(fig)
-
-    else:
-        st.warning("⚠️ Lagu tidak ditemukan.")
