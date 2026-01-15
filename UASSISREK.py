@@ -6,9 +6,7 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics.pairwise import cosine_similarity
 
-# ===============================
 # KONFIGURASI HALAMAN
-# ===============================
 st.set_page_config(
     page_title="Music Recommendation System",
     page_icon="🎧",
@@ -21,9 +19,7 @@ Sistem rekomendasi lagu berbasis **Content-Based Filtering**
 menggunakan **Cosine Similarity** pada fitur audio Spotify.
 """)
 
-# ===============================
 # LOAD DATA
-# ===============================
 @st.cache_data
 def load_data():
     df = pd.read_csv("songs_normalize.csv")
@@ -39,9 +35,8 @@ def load_data():
 
 df, features = load_data()
 
-# ===============================
 # STATISTIK DATASET
-# ===============================
+
 st.markdown("## 📊 Statistik Dataset")
 
 c1, c2, c3 = st.columns(3)
@@ -51,9 +46,7 @@ c3.metric("Rata-rata Popularity", round(df['popularity'].mean(), 2))
 
 st.markdown("---")
 
-# ===============================
 # PREPROCESSING
-# ===============================
 scaler = MinMaxScaler()
 feature_matrix = scaler.fit_transform(df[features])
 
@@ -64,9 +57,7 @@ similarity_df = pd.DataFrame(
     columns=df['song']
 )
 
-# ===============================
 # FUNCTION
-# ===============================
 def recommend_songs(song_name, top_n):
     return (
         similarity_df[song_name]
@@ -99,28 +90,8 @@ def explain_similarity(song_a, song_b):
     closest = pd.Series(diff[0], index=features).sort_values().head(3)
     return closest.index.tolist()
 
-def radar_chart(song_a, song_b):
-    values_a = df[df['song'] == song_a][features].values.flatten()
-    values_b = df[df['song'] == song_b][features].values.flatten()
 
-    labels = features + [features[0]]
-    values_a = np.append(values_a, values_a[0])
-    values_b = np.append(values_b, values_b[0])
-
-    angles = np.linspace(0, 2*np.pi, len(labels))
-
-    fig = plt.figure(figsize=(5,5))
-    ax = plt.subplot(111, polar=True)
-    ax.plot(angles, values_a, label=song_a)
-    ax.plot(angles, values_b, label=song_b)
-    ax.fill(angles, values_a, alpha=0.1)
-    ax.fill(angles, values_b, alpha=0.1)
-    ax.legend(fontsize=8)
-    return fig
-
-# ===============================
 # SIDEBAR
-# ===============================
 st.sidebar.header("⚙️ Pengaturan")
 
 song_input = st.sidebar.selectbox(
@@ -138,9 +109,7 @@ threshold = st.sidebar.slider(
     0.5, 0.9, 0.7, 0.05
 )
 
-# ===============================
 # PROFIL LAGU
-# ===============================
 st.markdown(f"## 🎼 Profil Lagu: **{song_input}**")
 
 song_profile = df[df['song'] == song_input][features].T
@@ -148,9 +117,7 @@ song_profile.columns = ["Nilai Fitur"]
 
 st.dataframe(song_profile, use_container_width=True)
 
-# ===============================
 # REKOMENDASI
-# ===============================
 st.markdown("## 🎧 Rekomendasi Lagu")
 
 recommendations = recommend_songs(song_input, top_n)
@@ -172,18 +139,13 @@ with col2:
     ax.set_title("Top Similar Songs")
     st.pyplot(fig)
 
-# ===============================
 # ALASAN REKOMENDASI
-# ===============================
 st.markdown("## 🔍 Alasan Rekomendasi")
 
 for song in recommendations.index:
     reasons = explain_similarity(song_input, song)
     st.write(f"**{song}** → mirip pada fitur: `{', '.join(reasons)}`")
-
-# ===============================
 # EVALUASI
-# ===============================
 st.markdown("## 📈 Evaluasi Sistem")
 
 precision, eval_df = precision_at_k(song_input, top_n, threshold)
@@ -205,9 +167,7 @@ with col4:
     ax2.set_title("Relevansi Rekomendasi")
     st.pyplot(fig2)
 
-# ===============================
 # PIE CHART
-# ===============================
 st.markdown("## 🥧 Distribusi Relevansi")
 
 relevant = eval_df['Relevan'].sum()
@@ -223,9 +183,7 @@ ax3.pie(
 ax3.axis("equal")
 st.pyplot(fig3)
 
-# ===============================
 # KESIMPULAN
-# ===============================
 st.markdown("## 📝 Kesimpulan")
 
 st.write(f"""
@@ -237,6 +195,7 @@ Kesamaan antar lagu dihitung berdasarkan fitur audio Spotify,
 sehingga rekomendasi bersifat personal dan tidak bergantung
 pada interaksi pengguna lain.
 """)
+
 
 
 
