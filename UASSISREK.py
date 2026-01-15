@@ -226,13 +226,6 @@ ax3.axis("equal")
 st.pyplot(fig3)
 
 # ===============================
-# RADAR CHART
-# ===============================
-st.markdown("## 🕸️ Perbandingan Fitur")
-
-st.pyplot(radar_chart(song_input, recommendations.index[0]))
-
-# ===============================
 # KESIMPULAN
 # ===============================
 st.markdown("## 📝 Kesimpulan")
@@ -249,3 +242,4 @@ pada interaksi pengguna lain.
 
 if presentation_mode:
     st.success("🎤 Mode presentasi aktif – fokus pada visual & hasil")
+
