@@ -138,8 +138,6 @@ threshold = st.sidebar.slider(
     0.5, 0.9, 0.7, 0.05
 )
 
-presentation_mode = st.sidebar.checkbox("🎤 Mode Presentasi")
-
 # ===============================
 # PROFIL LAGU
 # ===============================
@@ -239,6 +237,7 @@ Kesamaan antar lagu dihitung berdasarkan fitur audio Spotify,
 sehingga rekomendasi bersifat personal dan tidak bergantung
 pada interaksi pengguna lain.
 """)
+
 
 
 
