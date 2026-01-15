@@ -240,6 +240,5 @@ sehingga rekomendasi bersifat personal dan tidak bergantung
 pada interaksi pengguna lain.
 """)
 
-if presentation_mode:
-    st.success("🎤 Mode presentasi aktif – fokus pada visual & hasil")
+
 
