@@ -1,7 +1,5 @@
-# Sistem Rekomendasi Lagu Berbasis Collaborative Filtering
+# Sistem Rekomendasi Lagu Berbasis CBF
 
-Proyek ini merupakan implementasi sistem rekomendasi lagu menggunakan metode
-Collaborative Filtering berbasis user dengan cosine similarity.
 
 ## Dataset
 Dataset yang digunakan adalah dataset lagu populer yang berisi informasi artis,
@@ -10,7 +8,6 @@ judul lagu, dan tingkat popularitas.
 ## Metode
 - User-Based Collaborative Filtering
 - Cosine Similarity
-- Evaluasi: RMSE
 
 ## Implementasi
 Sistem diimplementasikan menggunakan Python dan Streamlit.
